@@ -1,19 +1,23 @@
 {
   "name": "tikzmcp-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "MCP server for TiKz rendering",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "watch": "tsc -w",
+    "dev": "tsx src/index.ts",
     "start": "node dist/index.js"
   },
   "packageManager": "pnpm@10.13.1",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.1",
-    "zod": "^3.23.8"
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^25.0.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
 
 const server = new Server(
   {
-    name: "tikz-server",
+    name: "tikzmcp",
     version: "1.0.0",
   },
   {
@@ -57,7 +57,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "render_tikz") {
-    // @ts-ignore
     const { code } = request.params.arguments as { code: string };
 
     const dir = await mkdtemp(join(tmpdir(), "tikz-"));
@@ -71,9 +70,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 \\usepackage{pgfplots}
 \\pgfplotsset{compat=1.18}
 \\begin{document}
-\\begin{tikzpicture}
 ${code}
-\\end{tikzpicture}
 \\end{document}
     `;
 
@@ -82,7 +79,7 @@ ${code}
 
       // Run latex
       try {
-          await execAsync(`latex -interaction=nonstopmode -output-directory="${dir}" "${texFile}"`);
+          await execAsync(`latex -interaction=nonstopmode -output-directory=\"${dir}\" \"${texFile}\"`);
       } catch (e: any) {
           // latex might exit with error but still produce log
           let log = "";
@@ -94,7 +91,7 @@ ${code}
 
       // Run dvisvgm
       // -n: no fonts (convert text to paths)
-      await execAsync(`dvisvgm -n -o "${svgFile}" "${dviFile}"`);
+      await execAsync(`dvisvgm -n -o \"${svgFile}\" \"${dviFile}\"`);
 
       const svgContent = await readFile(svgFile, "utf8");
 
