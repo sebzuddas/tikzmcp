@@ -1,0 +1,9 @@
+{
+  "name": "tikzmcp-root",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
