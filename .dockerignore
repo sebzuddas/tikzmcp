@@ -1,8 +1,6 @@
-node_modules
+**/node_modules
+**/dist
+**/.next
+**/out
 .git
-.next
-dist
-backend/node_modules
-backend/dist
-frontend/node_modules
-frontend/.next
+frontend

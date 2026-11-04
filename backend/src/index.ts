@@ -1,132 +1,50 @@
 #!/usr/bin/env node
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { RenderError, renderTikz } from "./render.js";
 
-const execAsync = promisify(exec);
+const server = new McpServer({ name: "tikzmcp", version: "1.1.0" });
 
-const server = new Server(
+server.registerTool(
+  "render_tikz",
   {
-    name: "tikzmcp",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
+    title: "Render TikZ",
+    description:
+      "Compile TikZ code with LaTeX and return the diagram as an SVG string. " +
+      "Accepts a tikzpicture environment, bare TikZ commands (wrapped automatically), " +
+      "or a full LaTeX document. tikz, pgfplots, amsmath and the arrows.meta, calc, " +
+      "positioning and shapes.geometric libraries are preloaded; extra \\usepackage or " +
+      "\\usetikzlibrary lines in the code are moved into the preamble.",
+    inputSchema: {
+      code: z
+        .string()
+        .min(1)
+        .describe("TikZ code, e.g. \\begin{tikzpicture} \\draw (0,0) circle (1); \\end{tikzpicture}"),
+      output_path: z
+        .string()
+        .optional()
+        .describe("If set, write the SVG to this file path and return only a confirmation instead of the SVG text."),
     },
-  }
+    annotations: { readOnlyHint: false, openWorldHint: false },
+  },
+  async ({ code, output_path }) => {
+    try {
+      const svg = await renderTikz(code);
+      if (output_path) {
+        const path = resolve(output_path);
+        await writeFile(path, svg);
+        return { content: [{ type: "text", text: `Wrote SVG (${svg.length} bytes) to ${path}` }] };
+      }
+      return { content: [{ type: "text", text: svg }] };
+    } catch (e) {
+      const message = e instanceof RenderError ? e.message : `Unexpected error: ${(e as Error).message}`;
+      return { content: [{ type: "text", text: message }], isError: true };
+    }
+  },
 );
 
-// Helper to convert Zod schema to JSON Schema
-function zodToJsonSchema(schema: z.ZodType): any {
-  // Basic implementation for this specific case
-  // In a real app, use zod-to-json-schema package
-  return {
-    type: "object",
-    properties: {
-      code: {
-        type: "string",
-        description: "The TiKz code to render. Do NOT include documentclass or document environment wrapper, just the tikzpicture or content."
-      }
-    },
-    required: ["code"]
-  };
-}
-
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "render_tikz",
-        description: "Render TiKz code to SVG",
-        inputSchema: zodToJsonSchema(
-          z.object({
-            code: z.string().describe("The TiKz code to render. Do NOT include documentclass or document environment wrapper, just the tikzpicture or content."),
-          })
-        ),
-      },
-    ],
-  };
-});
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name === "render_tikz") {
-    const { code } = request.params.arguments as { code: string };
-
-    const dir = await mkdtemp(join(tmpdir(), "tikz-"));
-    const texFile = join(dir, "diagram.tex");
-    const dviFile = join(dir, "diagram.dvi");
-    const svgFile = join(dir, "diagram.svg");
-
-    const fullTex = `
-\\documentclass[tikz, border=2mm]{standalone}
-\\usepackage{tikz}
-\\usepackage{pgfplots}
-\\pgfplotsset{compat=1.18}
-\\begin{document}
-${code}
-\\end{document}
-    `;
-
-    try {
-      await writeFile(texFile, fullTex);
-
-      // Run latex
-      try {
-          await execAsync(`latex -interaction=nonstopmode -output-directory=\"${dir}\" \"${texFile}\"`);
-      } catch (e: any) {
-          // latex might exit with error but still produce log
-          let log = "";
-          try {
-             log = await readFile(join(dir, "diagram.log"), "utf8");
-          } catch {}
-          throw new Error(`LaTeX compilation failed: ${e.message}\nLog:\n${log}`);
-      }
-
-      // Run dvisvgm
-      // -n: no fonts (convert text to paths)
-      await execAsync(`dvisvgm -n -o \"${svgFile}\" \"${dviFile}\"`);
-
-      const svgContent = await readFile(svgFile, "utf8");
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: svgContent,
-            mimeType: "image/svg+xml",
-          },
-        ],
-      };
-    } catch (error: any) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error rendering TiKz: ${error.message}`,
-            isError: true,
-          },
-        ],
-        isError: true,
-      };
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  }
-
-  throw new Error(`Tool not found: ${request.params.name}`);
-});
-
-async function run() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("TiKz MCP Server running on stdio");
-}
-
-run();
+await server.connect(new StdioServerTransport());
+console.error("tikzmcp server running on stdio");

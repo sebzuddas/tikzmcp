@@ -1,13 +1,14 @@
 {
-  "name": "tikzmcp-root",
+  "name": "tikzmcp",
   "private": true,
   "packageManager": "pnpm@10.13.1",
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "dev": "pnpm --parallel -r dev",
-    "build": "pnpm -r build"
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm --filter frontend lint",
+    "verify": "pnpm --filter tikzmcp-backend verify"
   }
 }

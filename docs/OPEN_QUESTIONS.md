@@ -1,8 +1,8 @@
 # Open Questions
 
-- [x] Should the MCP server code be merged into this branch? (YES, merged into `backend/`)
-- [ ] Is a local TeX installation available, or should we use an external API/Docker?
-- [x] Does "user prompt" imply Natural Language? (Implemented as direct TikZ code input for robustness; NL requires LLM integration which is future work)
-- [ ] LLM API Key availability for future NL features?
-- [ ] What specific LLM provider/model should be used? (Will default to OpenAI/Env var configuration).
-- [ ] Is there a specific frontend URL/CORS policy we need to respect?
+- [x] Should the MCP server code be merged into this branch? (Yes, it lives in `backend/`.)
+- [x] Is a local TeX installation available, or should we use an external API/Docker?
+  (Both supported: local TeX, or the Docker image. The web app needs neither.)
+- [x] Does "user prompt" imply natural language? (Direct TikZ input for now; NL is future work.)
+- [ ] LLM API key / provider for future NL features?
+- [ ] Should the MCP server also return PNG for clients that can't display SVG?
